@@ -1,0 +1,75 @@
+image: node:12.10.0
+
+<<: &npm_install
+  caches:
+    - node
+  name: Install dependencies
+  script:
+    - npm install --unsafe-perm
+  artifacts:
+    - node_modules/**
+    - dist/**
+
+<<: &unit_test
+  name: Unit Test
+  caches:
+    - node
+  script:
+    - npm run test
+
+<<: &lint
+  caches:
+    - node
+  name: Lint
+  script:
+    - npm run lint
+
+<<: &prettier
+  caches:
+    - node
+  name: Prettier
+  script:
+    - npm run prettier
+
+<<: &deploy
+  name: Deploy
+  caches:
+    - node
+  script:
+    - pipe: atlassian/npm-publish:0.2.5
+      variables:
+        NPM_TOKEN: $NPM_TOKEN
+
+pipelines:
+  default:
+    - step:
+        <<: *npm_install
+
+    - parallel:
+        # - step:
+        #     <<: *unit_test
+
+        - step:
+            <<: *lint
+
+        - step:
+            <<: *prettier
+
+  branches:
+    master:
+      - step:
+          <<: *npm_install
+
+      - parallel:
+          # - step:
+          #     <<: *unit_test
+
+          - step:
+              <<: *lint
+
+          - step:
+              <<: *prettier
+
+      - step:
+          deployment: npm
+          <<: *deploy
